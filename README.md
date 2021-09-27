@@ -5,6 +5,9 @@
 
 ```
 -   repo: https://github.com/tarioch/pre-commit-hooks
+    rev: v0.1.0
     hooks:
     -   id: check-flux-helm-values
 ```
+
+The hook depends on the helm binary being available in the path (but it doesn't require to be able to connect to a cluster).

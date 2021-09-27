@@ -5,7 +5,7 @@
 
 ```
 -   repo: https://github.com/tarioch/pre-commit-flux
-    rev: v0.1.0
+    rev: v0.2.0
     hooks:
     -   id: check-flux-helm-values
 ```

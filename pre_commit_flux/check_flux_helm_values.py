@@ -58,7 +58,7 @@ def _validateFile(fileToValidate, repos):
                         yaml.dump(definition["spec"]["values"], valuesFile)
 
                 res = subprocess.run(
-                    f"helm pull --repo {quote(chartUrl)} --version '{quote(chartVersion)}' {quote(chartName)}",
+                    f"helm pull --repo {quote(chartUrl)} --version {quote(chartVersion)} {quote(chartName)}",
                     shell=True,
                     cwd=tmpDir,
                     text=True,

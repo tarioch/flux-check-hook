@@ -7,10 +7,9 @@ import tempfile
 import yaml
 
 
-def main(argv=None):
-    print(argv)
+def main():
     repos = _buildRepoMap()
-    for arg in argv[1:]:
+    for arg in sys.argv[1:]:
         _validateFile(arg, repos)
 
 
@@ -84,4 +83,4 @@ def _validateFile(fileToValidate, repos):
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()

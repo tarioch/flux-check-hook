@@ -7,7 +7,8 @@ import tempfile
 import yaml
 
 
-def main(argv):
+def main(argv=None):
+    print(argv)
     repos = _buildRepoMap()
     for arg in argv[1:]:
         _validateFile(arg, repos)

@@ -4,7 +4,7 @@
 ## Usage
 
 ```
--   repo: https://github.com/tarioch/pre-commit-flux
+-   repo: https://github.com/tarioch/flux-check-hook
     rev: v0.2.0
     hooks:
     -   id: check-flux-helm-values

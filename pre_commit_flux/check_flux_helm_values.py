@@ -70,7 +70,7 @@ def _validateFile(fileToValidate, repos):
                     exit(1)
 
                 res = subprocess.run(
-                    "helm lint -f values.yaml *.tgz",
+                    "helm lint -f values.yaml \"{quote(chartName)}-{quote(chartVersion)}.tgz\"",
                     shell=True,
                     cwd=tmpDir,
                     text=True,

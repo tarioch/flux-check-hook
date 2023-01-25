@@ -66,7 +66,6 @@ def _validateFile(fileToValidate, repos):
             chartName = chartSpec["chart"]
             chartVersion = chartSpec["version"]
             chartUrl = repos[chartSpec["sourceRef"]["name"]]
-            chartArchive = "{0}-{1}.tgz".format(chartName, chartVersion)
 
             with tempfile.TemporaryDirectory() as tmpDir:
                 with open(path.join(tmpDir, "values.yaml"), "w") as valuesFile:
@@ -83,11 +82,9 @@ def _validateFile(fileToValidate, repos):
                 )
                 if res.returncode != 0:
                     _collectErrors(
-                        {
-                            "source": chartArchive,
-                            "message": res.stdout,
-                        }
+                        {"source": "helm pull", "message": "\n{0}".format(res.stdout)}
                     )
+                    continue
 
                 res = subprocess.run(
                     "helm lint -f values.yaml *.tgz",
@@ -99,10 +96,7 @@ def _validateFile(fileToValidate, repos):
                 )
                 if res.returncode != 0:
                     _collectErrors(
-                        {
-                            "source": chartArchive,
-                            "message": res.stdout,
-                        }
+                        {"source": "helm lint", "message": "\n{0}".format(res.stdout)}
                     )
 
 

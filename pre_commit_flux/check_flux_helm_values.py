@@ -4,13 +4,28 @@ import subprocess
 import sys
 import tempfile
 from shlex import quote
+from string import Template
+
 import yaml
+
+errors: list = list()
 
 
 def main():
     repos = _buildRepoMap()
     for arg in sys.argv[1:]:
-        _validateFile(arg, repos)
+        try:
+            _validateFile(arg, repos)
+        except Exception as ex:
+            _collectErrors(
+                {
+                    "source": arg,
+                    "message": "{0} {1!r}".format(type(ex).__name__, ex.args),
+                }
+            )
+    if len(errors) > 0:
+        _printErrors()
+        exit(1)
 
 
 def _buildRepoMap():
@@ -51,6 +66,7 @@ def _validateFile(fileToValidate, repos):
             chartName = chartSpec["chart"]
             chartVersion = chartSpec["version"]
             chartUrl = repos[chartSpec["sourceRef"]["name"]]
+            chartArchive = "{0}-{1}.tgz".format(chartName, chartVersion)
 
             with tempfile.TemporaryDirectory() as tmpDir:
                 with open(path.join(tmpDir, "values.yaml"), "w") as valuesFile:
@@ -66,8 +82,12 @@ def _validateFile(fileToValidate, repos):
                     stderr=subprocess.STDOUT,
                 )
                 if res.returncode != 0:
-                    print(res.stdout)
-                    exit(1)
+                    _collectErrors(
+                        {
+                            "source": chartArchive,
+                            "message": res.stdout,
+                        }
+                    )
 
                 res = subprocess.run(
                     "helm lint -f values.yaml *.tgz",
@@ -78,8 +98,26 @@ def _validateFile(fileToValidate, repos):
                     stderr=subprocess.STDOUT,
                 )
                 if res.returncode != 0:
-                    print(res.stdout)
-                    exit(1)
+                    _collectErrors(
+                        {
+                            "source": chartArchive,
+                            "message": res.stdout,
+                        }
+                    )
+
+
+def _collectErrors(error):
+    errors.append(error)
+
+
+def _printErrors():
+    for i in errors:
+        print(
+            Template("[ERROR] $source: $message").substitute(
+                source=i["source"],
+                message=i["message"],
+            )
+        )
 
 
 if __name__ == "__main__":

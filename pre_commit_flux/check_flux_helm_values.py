@@ -4,11 +4,10 @@ import subprocess
 import sys
 import tempfile
 from shlex import quote
-from string import Template
 
 import yaml
 
-errors: list = list()
+errors: list = []
 
 
 def main():
@@ -17,12 +16,7 @@ def main():
         try:
             _validateFile(arg, repos)
         except Exception as ex:
-            _collectErrors(
-                {
-                    "source": arg,
-                    "message": "{0} {1!r}".format(type(ex).__name__, ex.args),
-                }
-            )
+            _collectErrors({"source": arg, "message": f"{type(ex).__name__} {ex.args}"})
     if len(errors) > 0:
         _printErrors()
         exit(1)
@@ -82,7 +76,7 @@ def _validateFile(fileToValidate, repos):
                 )
                 if res.returncode != 0:
                     _collectErrors(
-                        {"source": "helm pull", "message": "\n{0}".format(res.stdout)}
+                        {"source": "helm pull", "message": f"\n{res.stdout}"}
                     )
                     continue
 
@@ -96,7 +90,7 @@ def _validateFile(fileToValidate, repos):
                 )
                 if res.returncode != 0:
                     _collectErrors(
-                        {"source": "helm lint", "message": "\n{0}".format(res.stdout)}
+                        {"source": "helm lint", "message": f"\n{res.stdout}"}
                     )
 
 
@@ -106,12 +100,7 @@ def _collectErrors(error):
 
 def _printErrors():
     for i in errors:
-        print(
-            Template("[ERROR] $source: $message").substitute(
-                source=i["source"],
-                message=i["message"],
-            )
-        )
+        print(f"[ERROR] {i['source']}: {i['message']}")
 
 
 if __name__ == "__main__":

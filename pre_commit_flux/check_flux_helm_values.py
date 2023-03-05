@@ -1,8 +1,10 @@
 import argparse
 import asyncio
 import dataclasses
+import logging
 import tempfile
 from pathlib import Path
+from typing import Generator
 
 import yaml
 from flux_local import git_repo
@@ -22,59 +24,53 @@ class Name:
 
 
 def main():
-    asyncio.run(_asyncMain())
-    if len(errors) > 0:
-        _printErrors()
-        exit(1)
-
-
-async def _asyncMain():
-    parser = argparse.ArgumentParser(
-        description="Command line utility for inspecting a local flux repository.",
-    )
-    parser.add_argument(
-        "filename",
-        nargs="+",
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("filename", nargs="+")
     parser.add_argument(
         "--path",
         type=Path,
-        help="Path to the flux cluster kustomization (optional)",
+        help="Path to the flux cluster kustomizations",
         required=False,
     )
-    args = parser.parse_args()
+    parser.add_argument("-v", "--verbose", type=bool, action=argparse.BooleanOptionalAction)
+    asyncio.run(_asyncMain(parser.parse_args()))
 
+
+async def _asyncMain(args):
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
     release_names = set({})
     for arg in args.filename:
         try:
-            if release_name := _getReleaseName(arg):
-                release_names.add(release_name)
+            release_names |= set(_getReleaseNames(arg))
         except ValueError as err:
             _collectErrors({"source": arg, "message": str(err)})
     try:
         await _validateReleases(release_names, args.path)
     except Exception as err:
-        import traceback
-
-        traceback.print_exc()
         _collectErrors({"source": "validateReleases", "message": str(err)})
 
+    if len(errors) > 0:
+        _printErrors()
+        exit(1)
 
-def _getReleaseName(fileToValidate: str) -> Name | None:
-    """Return a namespace and name if valid HelmRelease yaml file."""
+
+def _getReleaseNames(fileToValidate: str) -> Generator[Name, None, None]:
     with open(fileToValidate) as f:
         for definition in yaml.load_all(f, Loader=yaml.SafeLoader):
-            if not definition or definition.get("kind") != "HelmRelease":
-                return None
-        if not (metadata := definition.get("metadata")):
-            raise ValueError(f"Invalid HelmRelease missing metadata: {definition}")
-        if not (name := metadata.get("name")):
-            raise ValueError(f"Invalid HelmRelease missing metadata.name: {definition}")
-        if not (namespace := metadata.get("namespace")):
-            raise ValueError(
-                f"Invalid HelmRelease missing metadata.namespace: {definition}"
-            )
-        return Name(namespace, name)
+            if (
+                not definition
+                or "kind" not in definition
+                or definition["kind"] != "HelmRelease"
+            ):
+                continue
+            if (
+                not (metadata := definition.get("metadata"))
+                or not (name := metadata.get("name"))
+                or not (namespace := metadata.get("namespace"))
+            ):
+                raise ValueError(f"HelmRelease missing metadata fields: {definition}")
+            yield Name(namespace, name)
 
 
 async def _validateReleases(release_names: set[Name], path: Path | None) -> None:
@@ -94,7 +90,7 @@ async def _validateReleases(release_names: set[Name], path: Path | None) -> None
         )
         return
 
-    # Prune HelmRepository objects to just the active referenced by a HelmRelease
+    # Build a list of HelmRepositories referenced by chagned HelmReleases
     active_repo_names = {
         Name(release.chart.repo_namespace, release.chart.repo_name)
         for release in releases
@@ -118,14 +114,10 @@ async def _validateReleases(release_names: set[Name], path: Path | None) -> None
 
         for release in releases:
             try:
-                await helm.template(release)
+                cmd = await helm.template(release)
+                await cmd.run()
             except CommandException as err:
-                _collectErrors(
-                    {
-                        "source": "helm template {release.release_name}",
-                        "message": str(err),
-                    }
-                )
+                _collectErrors({"source": "helm template", "message": str(err)})
 
 
 def _collectErrors(error: dict[str, str]):

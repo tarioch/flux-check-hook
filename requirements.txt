@@ -1,1 +1,2 @@
+flux-local==0.10.0
 pyyaml

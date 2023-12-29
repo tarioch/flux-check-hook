@@ -5,7 +5,7 @@
 
 ```
 -   repo: https://github.com/tarioch/flux-check-hook
-    rev: v0.2.0
+    rev: v0.4.0
     hooks:
     -   id: check-flux-helm-values
 ```

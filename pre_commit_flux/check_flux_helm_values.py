@@ -52,7 +52,15 @@ def _validateFile(fileToValidate, repos):
             ):
                 continue
 
-            chartSpec = definition["spec"]["chart"]["spec"]
+            try:
+                chartSpec = definition["spec"]["chart"]["spec"]
+            
+            except KeyError as e:
+                if definition["spec"["chartRef"]]:
+                    print("Cannot validate OCI-based charts, skipping")
+                    continue
+                else:
+                    raise e
 
             if chartSpec["sourceRef"]["kind"] != "HelmRepository":
                 continue
@@ -66,11 +74,8 @@ def _validateFile(fileToValidate, repos):
                     if "spec" in definition and "values" in definition["spec"]:
                         yaml.dump(definition["spec"]["values"], valuesFile)
 
-                if chartUrl.startswith("oci://"):
-                    chartOciUrl = f"{chartUrl}{'' if chartUrl.endswith('/') else '/'}{chartName}"
-                    command = f"helm pull {quote(chartOciUrl)} --version {quote(chartVersion)}"
-                else:
-                    command = f"helm pull --repo {quote(chartUrl)} --version {quote(chartVersion)} {quote(chartName)}"
+                command = f"helm pull --repo {quote(chartUrl)} --version {quote(chartVersion)} {quote(chartName)}"
+                
                 res = subprocess.run(
                     command,
                     shell=True,

@@ -56,7 +56,7 @@ def _validateFile(fileToValidate, repos):
                 chartSpec = definition["spec"]["chart"]["spec"]
             
             except KeyError as e:
-                if definition["spec"["chartRef"]]:
+                if definition["spec"]["chartRef"]:
                     print("Cannot validate OCI-based charts, skipping")
                     continue
                 else:

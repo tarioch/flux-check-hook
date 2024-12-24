@@ -54,7 +54,7 @@ def _validateFile(fileToValidate, repos):
 
             try:
                 chartSpec = definition["spec"]["chart"]["spec"]
-            
+
             except KeyError as e:
                 if definition["spec"]["chartRef"]:
                     print("Cannot validate OCI-based charts, skipping")
@@ -75,7 +75,7 @@ def _validateFile(fileToValidate, repos):
                         yaml.dump(definition["spec"]["values"], valuesFile)
 
                 command = f"helm pull --repo {quote(chartUrl)} --version {quote(chartVersion)} {quote(chartName)}"
-                
+
                 res = subprocess.run(
                     command,
                     shell=True,
@@ -86,7 +86,7 @@ def _validateFile(fileToValidate, repos):
                 )
                 if res.returncode != 0:
                     _collectErrors(
-                        {"source": "helm pull", "message": f"\n{res.stdout}"}
+                        {"source": f"helm pull for '{fileToValidate}'", "message": f"\n{res.stdout}"}
                     )
                     continue
 
@@ -100,7 +100,7 @@ def _validateFile(fileToValidate, repos):
                 )
                 if res.returncode != 0:
                     _collectErrors(
-                        {"source": "helm lint", "message": f"\n{res.stdout}"}
+                        {"source": f"helm lint for '{fileToValidate}'", "message": f"\n{res.stdout}"}
                     )
 
 

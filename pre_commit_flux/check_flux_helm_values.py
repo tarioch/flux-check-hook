@@ -41,6 +41,26 @@ def _buildRepoMap():
 
     return repos
 
+def check_kustomiztion(path: str):
+    kustomize_release = {}
+    command = f'kubectl kustomize {path}'
+    res = subprocess.run(
+        command,
+        shell=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if res.returncode == 0:
+        doc = str(res.stdout)
+        for definition in yaml.load_all(doc, Loader=yaml.SafeLoader):
+            if (
+                definition and "kind" in definition
+                and definition["kind"] == "HelmRelease"
+            ):
+                kustomize_release = definition
+
+    return kustomize_release
 
 def _validateFile(fileToValidate, repos):
     with open(fileToValidate) as f:
@@ -55,12 +75,27 @@ def _validateFile(fileToValidate, repos):
             try:
                 chartSpec = definition["spec"]["chart"]["spec"]
 
-            except KeyError as e:
-                if definition["spec"]["chartRef"]:
-                    print("Cannot validate OCI-based charts, skipping")
-                    continue
-                else:
-                    raise e
+            except KeyError:
+                # Maybe it kustomize
+                path_to_file = f.name.split('/')
+                while path_to_file:
+                    path_to_file.pop()
+                    fileDir = '/'.join(path_to_file)
+                    check = check_kustomiztion(fileDir)
+                    if check:
+                        print(f'kustomization for {f.name} found {fileDir}')
+                        definition = check
+                        break
+
+                try:
+                    chartSpec = definition["spec"]["chart"]["spec"]
+
+                except KeyError as e:
+                    if definition["spec"]["chartRef"]:
+                        print("Cannot validate OCI-based charts, skipping")
+                        continue
+                    else:
+                        raise e
 
             if chartSpec["sourceRef"]["kind"] != "HelmRepository":
                 continue

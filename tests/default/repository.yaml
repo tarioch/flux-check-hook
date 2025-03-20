@@ -1,0 +1,9 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: externalhelm
+spec:
+  type: "oci"
+  interval: 24h
+  url: oci://registry-1.docker.io/bitnamicharts/

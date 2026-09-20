@@ -6,6 +6,9 @@ import tempfile
 
 import yaml
 
+# helm pull downloads the chart, this is the time a slow or unreachable repository gets
+TIMEOUT_SECONDS = 300
+
 
 def main():
     repos = _buildRepoMap()
@@ -175,11 +178,18 @@ def _run(command, cwd=None):
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            timeout=TIMEOUT_SECONDS,
         )
     except FileNotFoundError:
         # what a shell reports for a command it does not find
         return subprocess.CompletedProcess(
             command, 127, f"{command[0]}: command not found\n"
+        )
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(
+            command,
+            124,
+            f"{' '.join(command)}: timed out after {TIMEOUT_SECONDS} seconds\n",
         )
 
 

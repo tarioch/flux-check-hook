@@ -6,19 +6,17 @@ import tempfile
 
 import yaml
 
-errors: list = []
-
 
 def main():
     repos = _buildRepoMap()
+    errors = []
     for arg in sys.argv[1:]:
         try:
-            _validateFile(arg, repos)
+            _validateFile(arg, repos, errors)
         except Exception as ex:
-            _collectErrors({"source": arg, "message": f"{type(ex).__name__} {ex.args}"})
-    if len(errors) > 0:
-        _printErrors()
-        exit(1)
+            errors.append({"source": arg, "message": f"{type(ex).__name__} {ex.args}"})
+    _printErrors(errors)
+    return 1 if errors else 0
 
 
 def _buildRepoMap():
@@ -58,7 +56,7 @@ def check_kustomiztion(path: str):
     return kustomize_release
 
 
-def _validateFile(fileToValidate, repos):
+def _validateFile(fileToValidate, repos, errors):
     with open(fileToValidate) as f:
         for definition in yaml.load_all(f, Loader=yaml.SafeLoader):
             if (
@@ -123,7 +121,7 @@ def _validateFile(fileToValidate, repos):
 
                 res = _run(command, cwd=tmpDir)
                 if res.returncode != 0:
-                    _collectErrors(
+                    errors.append(
                         {
                             "source": f"helm pull for '{fileToValidate}'",
                             "message": f"\n{res.stdout}",
@@ -134,7 +132,7 @@ def _validateFile(fileToValidate, repos):
                 charts = sorted(glob.glob("*.tgz", root_dir=tmpDir))
                 res = _run(["helm", "lint", "-f", "values.yaml", *charts], cwd=tmpDir)
                 if res.returncode != 0:
-                    _collectErrors(
+                    errors.append(
                         {
                             "source": f"helm lint for '{fileToValidate}'",
                             "message": f"\n{res.stdout}",
@@ -159,14 +157,10 @@ def _run(command, cwd=None):
         )
 
 
-def _collectErrors(error):
-    errors.append(error)
-
-
-def _printErrors():
+def _printErrors(errors):
     for i in errors:
         print(f"[ERROR] {i['source']}: {i['message']}")
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

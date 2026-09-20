@@ -53,12 +53,6 @@ def chart_repo(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
 
 
 @pytest.fixture(autouse=True)
-def no_errors() -> None:
-    # the hook collects its errors in a module global
-    testm.errors.clear()
-
-
-@pytest.fixture(autouse=True)
 def flux(tmp_path: Path, chart_repo: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """Work in a copy of fixtures/flux, where the HelmRepository points to the chart repository."""
     shutil.copytree(FIXTURES / "flux", tmp_path, dirs_exist_ok=True)
@@ -67,14 +61,10 @@ def flux(tmp_path: Path, chart_repo: str, monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.chdir(tmp_path)
 
 
-def run_hook(*files: str) -> int | str | None:
+def run_hook(*files: str) -> int:
     """Run the hook on the files and return its exit code."""
     with mock.patch("sys.argv", ["check-flux-helm-values", *files]):
-        try:
-            testm.main()
-        except SystemExit as e:
-            return e.code
-    return 0
+        return testm.main()
 
 
 def test_basic_usecase(capsys: pytest.CaptureFixture[str]) -> None:
@@ -127,3 +117,19 @@ def test_missing_helm(
     out = capsys.readouterr().out
     assert "helm pull for" in out
     assert "not found" in out
+
+
+def test_errors_do_not_carry_over_to_the_next_run() -> None:
+    assert run_hook("invalid_values/release.yaml") == 1
+
+    assert run_hook("default/release.yaml") == 0
+
+
+@pytest.mark.parametrize(
+    ("file", "exit_code"),
+    [("default/release.yaml", 0), ("invalid_values/release.yaml", 1)],
+)
+def test_exit_code_of_the_command(file: str, exit_code: int) -> None:
+    result = subprocess.run(["check-flux-helm-values", file], capture_output=True)
+
+    assert result.returncode == exit_code

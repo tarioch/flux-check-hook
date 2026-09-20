@@ -107,3 +107,23 @@ def test_invalid_kustomization(capsys: pytest.CaptureFixture[str]) -> None:
     assert run_hook("invalid_kustomization/release.yaml") == 1
 
     assert re.search(VALUE_PATH, capsys.readouterr().out)
+
+
+def test_kustomization_in_a_directory_with_a_space(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert run_hook("kustomization with space/release.yaml") == 0
+
+    assert "kustomization" in capsys.readouterr().out
+
+
+def test_missing_helm(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("PATH", "")
+
+    assert run_hook("default/release.yaml") == 1
+
+    out = capsys.readouterr().out
+    assert "helm pull for" in out
+    assert "not found" in out

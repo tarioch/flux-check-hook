@@ -12,7 +12,7 @@ published to PyPI.
 | `src/pre_commit_flux/check_flux_helm_values.py` | the hook |
 | `tests/test_precommit.py` | the tests, they run the hook with the real `helm` and `kubectl` against a chart repository served from localhost, and skip themselves without the tools |
 | `tests/fixtures/chart/` | the chart the tests serve, with a `values.schema.json` |
-| `tests/fixtures/flux/` | the flux resources the tests run the hook on, one directory per case (`kustomization/` patches the release in `default/`) |
+| `tests/fixtures/flux/` | the flux resources the tests run the hook on, one directory per case (`kustomization/` patches the release in `default/`, `kustomization with space/` has a space in its name on purpose) |
 
 ## Setup
 

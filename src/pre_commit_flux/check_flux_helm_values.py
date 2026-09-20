@@ -39,8 +39,9 @@ def _buildRepoMap():
     return repos
 
 
-def check_kustomiztion(path: str):
-    kustomize_release = {}
+def check_kustomiztion(path: str, name):
+    """The release of that name that the kustomization builds, or its only release."""
+    kustomize_releases = []
     # the directory of the last iteration is "", that is the current directory
     res = _run(["kubectl", "kustomize", path or "."])
     if res.returncode == 0:
@@ -51,9 +52,12 @@ def check_kustomiztion(path: str):
                 and "kind" in definition
                 and definition["kind"] == "HelmRelease"
             ):
-                kustomize_release = definition
+                kustomize_releases.append(definition)
 
-    return kustomize_release
+    for release in kustomize_releases:
+        if release.get("metadata", {}).get("name") == name:
+            return release
+    return kustomize_releases[0] if len(kustomize_releases) == 1 else {}
 
 
 def _validateFile(fileToValidate, repos, errors):
@@ -66,6 +70,7 @@ def _validateFile(fileToValidate, repos, errors):
             ):
                 continue
 
+            name = definition.get("metadata", {}).get("name")
             chartSpec = _chartSpec(definition)
             if not chartSpec and "chartRef" not in _spec(definition):
                 # Maybe it kustomize
@@ -73,7 +78,7 @@ def _validateFile(fileToValidate, repos, errors):
                 while path_to_file:
                     path_to_file.pop()
                     fileDir = "/".join(path_to_file)
-                    check = check_kustomiztion(fileDir)
+                    check = check_kustomiztion(fileDir, name)
                     if check:
                         print(f"kustomization for {f.name} found {fileDir}")
                         definition = check
@@ -85,12 +90,11 @@ def _validateFile(fileToValidate, repos, errors):
                 if "chartRef" in _spec(definition):
                     print("Cannot validate OCI-based charts, skipping")
                 else:
-                    name = definition.get("metadata", {}).get("name")
                     errors.append(
                         {
                             "source": fileToValidate,
                             "message": f"HelmRelease '{name}' has neither spec.chart.spec nor spec.chartRef "
-                            "and no kustomization in the parent directories builds it",
+                            "and no kustomization in the parent directories builds a HelmRelease of that name",
                         }
                     )
                 continue

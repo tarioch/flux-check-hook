@@ -3,7 +3,6 @@ import os.path as path
 import subprocess
 import sys
 import tempfile
-from shlex import quote
 
 import yaml
 
@@ -44,14 +43,8 @@ def _buildRepoMap():
 
 def check_kustomiztion(path: str):
     kustomize_release = {}
-    command = f"kubectl kustomize {path}"
-    res = subprocess.run(
-        command,
-        shell=True,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
+    # the directory of the last iteration is "", that is the current directory
+    res = _run(["kubectl", "kustomize", path or "."])
     if res.returncode == 0:
         doc = str(res.stdout)
         for definition in yaml.load_all(doc, Loader=yaml.SafeLoader):
@@ -116,18 +109,19 @@ def _validateFile(fileToValidate, repos):
                     chartOciUrl = (
                         f"{chartUrl}{'' if chartUrl.endswith('/') else '/'}{chartName}"
                     )
-                    command = f"helm pull {quote(chartOciUrl)} --version {quote(chartVersion)}"
+                    command = ["helm", "pull", chartOciUrl, "--version", chartVersion]
                 else:
-                    command = f"helm pull --repo {quote(chartUrl)} --version {quote(chartVersion)} {quote(chartName)}"
+                    command = [
+                        "helm",
+                        "pull",
+                        "--repo",
+                        chartUrl,
+                        "--version",
+                        chartVersion,
+                        chartName,
+                    ]
 
-                res = subprocess.run(
-                    command,
-                    shell=True,
-                    cwd=tmpDir,
-                    text=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                )
+                res = _run(command, cwd=tmpDir)
                 if res.returncode != 0:
                     _collectErrors(
                         {
@@ -137,14 +131,8 @@ def _validateFile(fileToValidate, repos):
                     )
                     continue
 
-                res = subprocess.run(
-                    "helm lint -f values.yaml *.tgz",
-                    shell=True,
-                    cwd=tmpDir,
-                    text=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                )
+                charts = sorted(glob.glob("*.tgz", root_dir=tmpDir))
+                res = _run(["helm", "lint", "-f", "values.yaml", *charts], cwd=tmpDir)
                 if res.returncode != 0:
                     _collectErrors(
                         {
@@ -152,6 +140,23 @@ def _validateFile(fileToValidate, repos):
                             "message": f"\n{res.stdout}",
                         }
                     )
+
+
+def _run(command, cwd=None):
+    """Run a command, its stdout and stderr are the output."""
+    try:
+        return subprocess.run(
+            command,
+            cwd=cwd,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+    except FileNotFoundError:
+        # what a shell reports for a command it does not find
+        return subprocess.CompletedProcess(
+            command, 127, f"{command[0]}: command not found\n"
+        )
 
 
 def _collectErrors(error):

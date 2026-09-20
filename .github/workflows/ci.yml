@@ -50,6 +50,7 @@ jobs:
       - name: Install the project
         run: uv sync --locked --dev
 
+      # the tests skip themselves without these, do not let that pass silently
       - name: Check the tools of the tests
         run: |
           helm version
@@ -72,4 +73,4 @@ jobs:
 
       # installs the hook the way the users of it do: pre-commit builds the package from the repository
       - name: Run the hook
-        run: uvx pre-commit try-repo . check-flux-helm-values --verbose --files tests/default/repository.yaml
+        run: uvx pre-commit try-repo . check-flux-helm-values --verbose --files tests/fixtures/chart/Chart.yaml

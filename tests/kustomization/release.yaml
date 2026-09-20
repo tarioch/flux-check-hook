@@ -1,7 +1,0 @@
-kind: HelmRelease
-metadata:
-  name: test-nginx
-spec:
-  values:
-     ingress:
-         enabled: true

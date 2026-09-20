@@ -4,4 +4,4 @@ patches:
   - path: release.yaml
     target:
       kind: HelmRelease
-      name: test-nginx
+      name: demo

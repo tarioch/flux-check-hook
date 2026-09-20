@@ -28,8 +28,7 @@ Python 3.10 to 3.14 are supported and tested. The integration tests need [`helm`
 CI runs the same commands, all of them have to pass:
 
 ```bash
-uv run pre-commit run --all-files   # ruff, ruff format, mypy, uv-lock, zizmor, hook manifest
-uv run deptry src                   # imports vs declared dependencies
+uvx pre-commit run --all-files   # ruff, ruff format, mypy, uv-lock, zizmor, hook manifest
 uv run pytest
 ```
 
@@ -48,9 +47,10 @@ Things that catch people out:
 - The hook prints `[ERROR] <source>: <message>` for every problem and exits with 1, the messages are what its users see
   in the commit output. `helm` and `kubectl` are called without a shell, all calls go through `_run`, which the unit tests
   replace.
-- Type hints are required in `src` (mypy `disallow_untyped_defs`, tests are exempt).
-- ruff selects `E4, E7, E9, F, B, I, S602, UP` (see `pyproject.toml`), `ruff format` decides the formatting.
-- The version in `pyproject.toml` is a placeholder, the version of a release is its git tag.
+- `ruff format` decides the formatting, the lint rules are pinned in `pyproject.toml` because the ruff defaults change
+  between versions.
+- `pyproject.toml` only holds what pre-commit needs to build and install the hook. The version is a placeholder, the
+  version of a release is its git tag.
 
 ## Dependencies
 

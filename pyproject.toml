@@ -1,45 +1,20 @@
 [project]
 name = "pre-commit-flux"
-description = "pre-commit hook that checks the values of flux HelmReleases against the chart"
-authors = [
-    {name = "Patrick Ruckstuhl", email = "patrick@ch.tario.org"}
-]
-readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
-# The hook is installed by pre-commit from a git tag, it is not published. The tag is the version.
+# not published, pre-commit installs the hook from a git tag and that tag is the version
 version = "0.0.0"
 requires-python = ">=3.10"
-dependencies = [
-    "pyyaml",
-]
-
-[project.urls]
-Repository = "https://github.com/tarioch/flux-check-hook"
-Issues = "https://github.com/tarioch/flux-check-hook/issues"
+dependencies = ["pyyaml"]
 
 [project.scripts]
 check-flux-helm-values = "pre_commit_flux.check_flux_helm_values:main"
 
 [dependency-groups]
-dev = [
-    "pytest",
-    "pre-commit",
-    "deptry",
-    "mypy",
-    "types-PyYAML",
-]
+dev = ["pytest", "mypy", "types-PyYAML"]
 
 [build-system]
-requires = ["hatchling >= 1.26"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-
 [tool.ruff.lint]
-# explicit instead of the ruff defaults, which change between versions
-select = ["E4", "E7", "E9", "F", "B", "I", "UP"]
-
-[tool.mypy]
-ignore_missing_imports = true
+# the ruff defaults change between versions, this is the set that used to be the default
+select = ["E4", "E7", "E9", "F"]

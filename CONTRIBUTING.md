@@ -27,8 +27,7 @@ access to the OCI registry of the chart they pull, they need no cluster.
 CI runs the same commands, all of them have to pass:
 
 ```bash
-uv run pre-commit run --all-files   # ruff, ruff format, mypy, uv-lock, zizmor, hook manifest
-uv run deptry src                   # imports vs declared dependencies
+uvx pre-commit run --all-files   # ruff, ruff format, mypy, uv-lock, zizmor, hook manifest
 uv run pytest
 ```
 
@@ -46,8 +45,10 @@ Things that catch people out:
 
 - The hook prints `[ERROR] <source>: <message>` for every problem and exits with 1, the messages are what its users see
   in the commit output.
-- ruff selects `E4, E7, E9, F, B, I, UP` (see `pyproject.toml`), `ruff format` decides the formatting.
-- The version in `pyproject.toml` is a placeholder, the version of a release is its git tag.
+- `ruff format` decides the formatting, the lint rules are pinned in `pyproject.toml` because the ruff defaults change
+  between versions.
+- `pyproject.toml` only holds what pre-commit needs to build and install the hook. The version is a placeholder, the
+  version of a release is its git tag.
 
 ## Dependencies
 

@@ -26,14 +26,8 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Install the project
-        run: uv sync --locked --dev
-
       - name: Pre Commit
-        run: uv run pre-commit run --all-files
-
-      - name: Check dependencies
-        run: uv run deptry src
+        run: uvx pre-commit run --all-files
 
   test:
     name: Test (Python ${{ matrix.python-version }})

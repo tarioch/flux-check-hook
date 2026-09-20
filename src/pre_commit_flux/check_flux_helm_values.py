@@ -41,9 +41,10 @@ def _buildRepoMap():
 
     return repos
 
+
 def check_kustomiztion(path: str):
     kustomize_release = {}
-    command = f'kubectl kustomize {path}'
+    command = f"kubectl kustomize {path}"
     res = subprocess.run(
         command,
         shell=True,
@@ -55,12 +56,14 @@ def check_kustomiztion(path: str):
         doc = str(res.stdout)
         for definition in yaml.load_all(doc, Loader=yaml.SafeLoader):
             if (
-                definition and "kind" in definition
+                definition
+                and "kind" in definition
                 and definition["kind"] == "HelmRelease"
             ):
                 kustomize_release = definition
 
     return kustomize_release
+
 
 def _validateFile(fileToValidate, repos):
     with open(fileToValidate) as f:
@@ -77,13 +80,13 @@ def _validateFile(fileToValidate, repos):
 
             except KeyError:
                 # Maybe it kustomize
-                path_to_file = f.name.split('/')
+                path_to_file = f.name.split("/")
                 while path_to_file:
                     path_to_file.pop()
-                    fileDir = '/'.join(path_to_file)
+                    fileDir = "/".join(path_to_file)
                     check = check_kustomiztion(fileDir)
                     if check:
-                        print(f'kustomization for {f.name} found {fileDir}')
+                        print(f"kustomization for {f.name} found {fileDir}")
                         definition = check
                         break
 
@@ -110,7 +113,9 @@ def _validateFile(fileToValidate, repos):
                         yaml.dump(definition["spec"]["values"], valuesFile)
 
                 if chartUrl.startswith("oci://"):
-                    chartOciUrl = f"{chartUrl}{'' if chartUrl.endswith('/') else '/'}{chartName}"
+                    chartOciUrl = (
+                        f"{chartUrl}{'' if chartUrl.endswith('/') else '/'}{chartName}"
+                    )
                     command = f"helm pull {quote(chartOciUrl)} --version {quote(chartVersion)}"
                 else:
                     command = f"helm pull --repo {quote(chartUrl)} --version {quote(chartVersion)} {quote(chartName)}"
@@ -125,7 +130,10 @@ def _validateFile(fileToValidate, repos):
                 )
                 if res.returncode != 0:
                     _collectErrors(
-                        {"source": f"helm pull for '{fileToValidate}'", "message": f"\n{res.stdout}"}
+                        {
+                            "source": f"helm pull for '{fileToValidate}'",
+                            "message": f"\n{res.stdout}",
+                        }
                     )
                     continue
 
@@ -139,7 +147,10 @@ def _validateFile(fileToValidate, repos):
                 )
                 if res.returncode != 0:
                     _collectErrors(
-                        {"source": f"helm lint for '{fileToValidate}'", "message": f"\n{res.stdout}"}
+                        {
+                            "source": f"helm lint for '{fileToValidate}'",
+                            "message": f"\n{res.stdout}",
+                        }
                     )
 
 

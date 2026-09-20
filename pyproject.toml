@@ -1,0 +1,20 @@
+[project]
+name = "pre-commit-flux"
+# not published, pre-commit installs the hook from a git tag and that tag is the version
+version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = ["pyyaml"]
+
+[project.scripts]
+check-flux-helm-values = "pre_commit_flux.check_flux_helm_values:main"
+
+[dependency-groups]
+dev = ["pytest", "mypy", "types-PyYAML"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff.lint]
+# the ruff defaults change between versions, this is the set that used to be the default
+select = ["E4", "E7", "E9", "F"]

@@ -155,3 +155,17 @@ def test_chart_ref_is_skipped(capsys: pytest.CaptureFixture[str]) -> None:
     assert "skipping" in capsys.readouterr().out
     # a release with a chartRef is complete, no kustomization is needed to find its chart
     kustomize.assert_not_called()
+
+
+def test_kustomization_of_two_releases(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_hook("kustomization_of_two_releases/release.yaml") == 1
+
+    assert re.search(VALUE_PATH, capsys.readouterr().out)
+
+
+def test_kustomization_with_a_different_name_of_the_patch(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert run_hook("kustomization_with_target_name/release.yaml") == 1
+
+    assert re.search(VALUE_PATH, capsys.readouterr().out)

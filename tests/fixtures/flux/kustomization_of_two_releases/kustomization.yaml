@@ -1,0 +1,7 @@
+resources:
+  - ../two_releases
+patches:
+  - path: release.yaml
+    target:
+      kind: HelmRelease
+      name: demo

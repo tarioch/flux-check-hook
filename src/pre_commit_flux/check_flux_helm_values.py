@@ -1,8 +1,8 @@
 import glob
-import os.path as path
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 import yaml
 
@@ -27,7 +27,7 @@ def _buildRepoMap():
     for file in glob.glob("./**/*.yaml", recursive=True):
         with open(file) as f:
             try:
-                for definition in yaml.load_all(f, Loader=yaml.SafeLoader):
+                for definition in yaml.safe_load_all(f):
                     if (
                         not definition
                         or "kind" not in definition
@@ -49,7 +49,7 @@ def check_kustomiztion(path: str, name):
     res = _run(["kubectl", "kustomize", path or "."])
     if res.returncode == 0:
         doc = str(res.stdout)
-        for definition in yaml.load_all(doc, Loader=yaml.SafeLoader):
+        for definition in yaml.safe_load_all(doc):
             if (
                 definition
                 and "kind" in definition
@@ -65,7 +65,7 @@ def check_kustomiztion(path: str, name):
 
 def _validateFile(fileToValidate, repos, errors):
     with open(fileToValidate) as f:
-        for definition in yaml.load_all(f, Loader=yaml.SafeLoader):
+        for definition in yaml.safe_load_all(f):
             if (
                 not definition
                 or "kind" not in definition
@@ -119,9 +119,9 @@ def _validateFile(fileToValidate, repos, errors):
                 continue
 
             with tempfile.TemporaryDirectory() as tmpDir:
-                with open(path.join(tmpDir, "values.yaml"), "w") as valuesFile:
+                with open(Path(tmpDir) / "values.yaml", "w") as valuesFile:
                     if "spec" in definition and "values" in definition["spec"]:
-                        yaml.dump(definition["spec"]["values"], valuesFile)
+                        yaml.safe_dump(definition["spec"]["values"], valuesFile)
 
                 if chartUrl.startswith("oci://"):
                     chartOciUrl = (

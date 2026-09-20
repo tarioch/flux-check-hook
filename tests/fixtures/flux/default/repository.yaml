@@ -1,0 +1,7 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: charts
+spec:
+  # the tests replace this with the address of the chart repository they serve from localhost
+  url: http://localhost:8080

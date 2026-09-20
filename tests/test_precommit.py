@@ -19,59 +19,13 @@ pytestmark = pytest.mark.skipif(
     reason="needs helm and kubectl",
 )
 
-CHART = Path(__file__).parent / "fixtures" / "chart"
+FIXTURES = Path(__file__).parent / "fixtures"
+
+# the address of the chart repository in fixtures/flux/default/repository.yaml
+REPOSITORY_URL = "http://localhost:8080"
 
 # helm 3 reports the path of the invalid value as ingress.enabled, helm 4 as /ingress/enabled
 VALUE_PATH = r"ingress[./]enabled"
-
-REPOSITORY = """\
-apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
-metadata:
-  name: charts
-spec:
-  url: {url}
-"""
-
-RELEASE = """\
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: demo
-spec:
-  interval: 1h
-  chart:
-    spec:
-      chart: demo
-      version: 1.2.3
-      sourceRef:
-        kind: HelmRepository
-        name: charts
-  values:
-    ingress:
-      enabled: {enabled}
-"""
-
-PATCH = """\
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: demo
-spec:
-  values:
-    ingress:
-      enabled: {enabled}
-"""
-
-KUSTOMIZATION = """\
-resources:
-  - ../base
-patches:
-  - path: release.yaml
-    target:
-      kind: HelmRelease
-      name: demo
-"""
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -83,8 +37,9 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 def chart_repo(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
     """The url of a helm chart repository that serves the chart in fixtures/chart."""
     directory = tmp_path_factory.mktemp("chart_repo")
+    chart = FIXTURES / "chart"
     subprocess.run(
-        ["helm", "package", str(CHART), "--destination", str(directory)], check=True
+        ["helm", "package", str(chart), "--destination", str(directory)], check=True
     )
     subprocess.run(["helm", "repo", "index", str(directory)], check=True)
 
@@ -103,25 +58,13 @@ def no_errors() -> None:
     testm.errors.clear()
 
 
-@pytest.fixture
-def base(tmp_path: Path, chart_repo: str, monkeypatch: pytest.MonkeyPatch) -> Path:
+@pytest.fixture(autouse=True)
+def flux(tmp_path: Path, chart_repo: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Work in a copy of fixtures/flux, where the HelmRepository points to the chart repository."""
+    shutil.copytree(FIXTURES / "flux", tmp_path, dirs_exist_ok=True)
+    repository = tmp_path / "default" / "repository.yaml"
+    repository.write_text(repository.read_text().replace(REPOSITORY_URL, chart_repo))
     monkeypatch.chdir(tmp_path)
-    directory = tmp_path / "base"
-    directory.mkdir()
-    (directory / "repository.yaml").write_text(REPOSITORY.format(url=chart_repo))
-    (directory / "release.yaml").write_text(RELEASE.format(enabled="true"))
-    (directory / "kustomization.yaml").write_text(
-        "resources:\n  - repository.yaml\n  - release.yaml\n"
-    )
-    return directory
-
-
-@pytest.fixture
-def overlay(base: Path) -> Path:
-    directory = base.parent / "overlay"
-    directory.mkdir()
-    (directory / "kustomization.yaml").write_text(KUSTOMIZATION)
-    return directory
 
 
 def run_hook(*files: str) -> int | str | None:
@@ -134,47 +77,33 @@ def run_hook(*files: str) -> int | str | None:
     return 0
 
 
-def test_basic_usecase(base: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    assert run_hook("base/release.yaml") == 0
+def test_basic_usecase(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_hook("default/release.yaml") == 0
 
     assert capsys.readouterr().err == ""
 
 
-def test_invalid_values(base: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    (base / "release.yaml").write_text(RELEASE.format(enabled="8"))
-
-    assert run_hook("base/release.yaml") == 1
+def test_invalid_values(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_hook("invalid_values/release.yaml") == 1
 
     out = capsys.readouterr().out
     assert "helm lint for" in out
     assert re.search(VALUE_PATH, out)
 
 
-def test_unknown_chart_version(base: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    (base / "release.yaml").write_text(
-        RELEASE.format(enabled="true").replace("1.2.3", "9.9.9")
-    )
-
-    assert run_hook("base/release.yaml") == 1
+def test_unknown_chart_version(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_hook("unknown_version/release.yaml") == 1
 
     assert "helm pull for" in capsys.readouterr().out
 
 
-def test_kustomization_detect(
-    overlay: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    (overlay / "release.yaml").write_text(PATCH.format(enabled="false"))
-
-    assert run_hook("overlay/release.yaml") == 0
+def test_kustomization_detect(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_hook("kustomization/release.yaml") == 0
 
     assert "kustomization" in capsys.readouterr().out
 
 
-def test_invalid_kustomization(
-    overlay: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    (overlay / "release.yaml").write_text(PATCH.format(enabled="8"))
-
-    assert run_hook("overlay/release.yaml") == 1
+def test_invalid_kustomization(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_hook("invalid_kustomization/release.yaml") == 1
 
     assert re.search(VALUE_PATH, capsys.readouterr().out)

@@ -11,6 +11,7 @@ published to PyPI.
 | `.pre-commit-hooks.yaml` | the hook definition that pre-commit reads, the `entry` is the console script of the package |
 | `src/pre_commit_flux/check_flux_helm_values.py` | the hook |
 | `tests/test_precommit.py` | the tests, they run the hook with the real `helm` and `kubectl` against a chart repository served from localhost, and skip themselves without the tools |
+| `tests/test_run.py` | the tests of how the commands are run (timeout, missing command), they need neither `helm` nor `kubectl` |
 | `tests/fixtures/chart/` | the chart the tests serve, with a `values.schema.json` |
 | `tests/fixtures/flux/` | the flux resources the tests run the hook on, one directory per case (`kustomization/` patches the release in `default/`) |
 
@@ -46,6 +47,8 @@ Things that catch people out:
 
 - The hook prints `[ERROR] <source>: <message>` for every problem and exits with 1, the messages are what its users see
   in the commit output.
+- `helm` and `kubectl` are called without a shell, every call goes through `_run`. It stops a command after 300 seconds
+  and reports a command that is not installed like a failing one.
 - `ruff format` decides the formatting, the lint rules are pinned in `pyproject.toml` because the ruff defaults change
   between versions.
 - `pyproject.toml` only holds what pre-commit needs to build and install the hook. The version is a placeholder, the

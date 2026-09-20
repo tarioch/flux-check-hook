@@ -10,8 +10,9 @@ published to PyPI.
 |---|---|
 | `.pre-commit-hooks.yaml` | the hook definition that pre-commit reads, the `entry` is the console script of the package |
 | `src/pre_commit_flux/check_flux_helm_values.py` | the hook |
-| `tests/test_precommit.py` | the tests, they run the hook with the real `helm` and `kubectl` |
-| `tests/default/`, `tests/kustomization/`, `tests/invalid_kustomization/` | the flux resources the tests run against |
+| `tests/test_check_flux_helm_values.py` | unit tests, `helm` and `kubectl` are replaced by a fake |
+| `tests/test_integration.py` | tests with the real `helm` and `kubectl` against a chart repository served from localhost, they skip themselves without the tools |
+| `tests/fixtures/chart/` | the chart of the integration tests, with a `values.schema.json` |
 
 ## Setup
 
@@ -19,8 +20,8 @@ published to PyPI.
 uv sync --locked --dev
 ```
 
-Python 3.10 to 3.14 are supported and tested. The tests need [`helm`](https://helm.sh) and `kubectl` in the `PATH` and
-access to the OCI registry of the chart they pull, they need no cluster.
+Python 3.10 to 3.14 are supported and tested. The integration tests need [`helm`](https://helm.sh) and `kubectl` in the
+`PATH`, they need no network and no cluster.
 
 ## Checks
 
@@ -39,14 +40,16 @@ Things that catch people out:
 - mypy runs in the project environment (a local pre-commit hook calling `uv run mypy`), so it checks against the types of
   the installed packages. Stub packages (`types-*`) belong into the `dev` dependency group.
 - Whether the hook can be installed from the repository is a check of its own in CI (`uvx pre-commit try-repo . check-flux-helm-values
-  --files tests/default/repository.yaml`), run it after changing `.pre-commit-hooks.yaml`, `pyproject.toml` or the
+  --files tests/fixtures/chart/Chart.yaml`), run it after changing `.pre-commit-hooks.yaml`, `pyproject.toml` or the
   entry point.
 
 ## Code
 
 - The hook prints `[ERROR] <source>: <message>` for every problem and exits with 1, the messages are what its users see
-  in the commit output.
-- ruff selects `E4, E7, E9, F, B, I, UP` (see `pyproject.toml`), `ruff format` decides the formatting.
+  in the commit output. `helm` and `kubectl` are called without a shell, all calls go through `_run`, which the unit tests
+  replace.
+- Type hints are required in `src` (mypy `disallow_untyped_defs`, tests are exempt).
+- ruff selects `E4, E7, E9, F, B, I, S602, UP` (see `pyproject.toml`), `ruff format` decides the formatting.
 - The version in `pyproject.toml` is a placeholder, the version of a release is its git tag.
 
 ## Dependencies
@@ -74,4 +77,4 @@ current, zizmor fails for unpinned actions or broad permissions).
 
 - Release notes are drafted by release-drafter. Publishing the draft creates the tag `vX.Y.Z`, that tag is what users put
   into `rev:` of their `.pre-commit-config.yaml`. Nothing is uploaded anywhere.
-- The `test` job checks that `helm` and `kubectl` exist on the runner, the tests need them.
+- The `test` job checks that `helm` and `kubectl` exist on the runner instead of letting the integration tests skip.

@@ -23,8 +23,8 @@ What is checked:
   `https://` repositories and `oci://` ones) and linted with `helm lint`. The `HelmRepository` has to be defined in a
   yaml file below the directory the hook runs in.
 - A `HelmRelease` that only patches another one (no `chart.spec`, for example the `patches` of a kustomize overlay) is
-  built with `kubectl kustomize`, starting in the directory of the file and going up. The release built by the first
-  kustomization that builds one is checked.
+  built with `kubectl kustomize`, starting in the directory of the file and going up. The release of the same name from
+  the first kustomization that builds one is checked.
 - Charts from other sources (`GitRepository`, `Bucket`) and releases with a `chartRef` (`OCIRepository`) are skipped.
 
 Requirements:

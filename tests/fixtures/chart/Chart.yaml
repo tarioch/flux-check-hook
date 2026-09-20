@@ -1,0 +1,4 @@
+apiVersion: v2
+name: demo
+description: Minimal chart with a values schema, packaged by the tests
+version: 1.2.3

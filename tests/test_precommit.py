@@ -133,3 +133,25 @@ def test_exit_code_of_the_command(file: str, exit_code: int) -> None:
     result = subprocess.run(["check-flux-helm-values", file], capture_output=True)
 
     assert result.returncode == exit_code
+
+
+def test_unknown_repository(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_hook("unknown_repository/release.yaml") == 1
+
+    assert "HelmRepository 'other' is not defined" in capsys.readouterr().out
+
+
+def test_release_without_a_chart(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_hook("without_chart/release.yaml") == 1
+
+    out = capsys.readouterr().out
+    assert "HelmRelease 'demo' has neither spec.chart.spec nor spec.chartRef" in out
+
+
+def test_chart_ref_is_skipped(capsys: pytest.CaptureFixture[str]) -> None:
+    with mock.patch.object(testm, "check_kustomiztion", return_value={}) as kustomize:
+        assert run_hook("chart_ref/release.yaml") == 0
+
+    assert "skipping" in capsys.readouterr().out
+    # a release with a chartRef is complete, no kustomization is needed to find its chart
+    kustomize.assert_not_called()

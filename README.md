@@ -1,5 +1,7 @@
 # flux-check-hook
 
+[![latest release](https://img.shields.io/github/v/release/tarioch/flux-check-hook)](https://github.com/tarioch/flux-check-hook/releases/latest)
+
 [pre-commit](https://pre-commit.com) hook for working with [flux](https://fluxcd.io).
 
 ## Hooks
@@ -12,10 +14,13 @@ reconciles it.
 
 ```yaml
 - repo: https://github.com/tarioch/flux-check-hook
-  rev: v0.8.0  # use the latest release
+  rev: vX.Y.Z  # the latest release, see the badge above
   hooks:
     - id: check-flux-helm-values
 ```
+
+Replace `vX.Y.Z` with the tag of the latest release. `pre-commit autoupdate` does that for you, it sets `rev` of every
+repository in the configuration to its latest tag.
 
 What is checked:
 

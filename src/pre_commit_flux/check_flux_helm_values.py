@@ -77,16 +77,7 @@ def _validate_file(file_to_validate, repos, errors):
             chart_spec = _chart_spec(definition)
             if not chart_spec and "chartRef" not in _spec(definition):
                 # Maybe it kustomize
-                path_to_file = f.name.split("/")
-                while path_to_file:
-                    path_to_file.pop()
-                    file_dir = "/".join(path_to_file)
-                    check = _kustomize_release(file_dir, name)
-                    if check:
-                        print(f"kustomization for {f.name} found {file_dir}")
-                        definition = check
-                        break
-
+                definition = _from_kustomization(file_to_validate, name) or definition
                 chart_spec = _chart_spec(definition)
 
             if not chart_spec:
@@ -118,50 +109,71 @@ def _validate_file(file_to_validate, repos, errors):
                 )
                 continue
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                with open(Path(tmp_dir) / "values.yaml", "w") as values_file:
-                    if "spec" in definition and "values" in definition["spec"]:
-                        yaml.safe_dump(definition["spec"]["values"], values_file)
+            _lint(
+                file_to_validate,
+                definition,
+                chart_url,
+                chart_name,
+                chart_version,
+                errors,
+            )
 
-                if chart_url.startswith("oci://"):
-                    chart_oci_url = f"{chart_url}{'' if chart_url.endswith('/') else '/'}{chart_name}"
-                    command = [
-                        "helm",
-                        "pull",
-                        chart_oci_url,
-                        "--version",
-                        chart_version,
-                    ]
-                else:
-                    command = [
-                        "helm",
-                        "pull",
-                        "--repo",
-                        chart_url,
-                        "--version",
-                        chart_version,
-                        chart_name,
-                    ]
 
-                res = _run(command, cwd=tmp_dir)
-                if res.returncode != 0:
-                    errors.append(
-                        {
-                            "source": f"helm pull for '{file_to_validate}'",
-                            "message": f"\n{res.stdout}",
-                        }
-                    )
-                    continue
+def _from_kustomization(file, name):
+    """The release of that name that a kustomization above the file builds, None if there is none."""
+    path_to_file = file.split("/")
+    while path_to_file:
+        path_to_file.pop()
+        file_dir = "/".join(path_to_file)
+        release = _kustomize_release(file_dir, name)
+        if release:
+            print(f"kustomization for {file} found {file_dir}")
+            return release
+    return None
 
-                charts = sorted(glob.glob("*.tgz", root_dir=tmp_dir))
-                res = _run(["helm", "lint", "-f", "values.yaml", *charts], cwd=tmp_dir)
-                if res.returncode != 0:
-                    errors.append(
-                        {
-                            "source": f"helm lint for '{file_to_validate}'",
-                            "message": f"\n{res.stdout}",
-                        }
-                    )
+
+def _lint(file_to_validate, definition, chart_url, chart_name, chart_version, errors):
+    """Pull the chart and lint it with the values of the release."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        with open(Path(tmp_dir) / "values.yaml", "w") as values_file:
+            if "spec" in definition and "values" in definition["spec"]:
+                yaml.safe_dump(definition["spec"]["values"], values_file)
+
+        if chart_url.startswith("oci://"):
+            chart_oci_url = (
+                f"{chart_url}{'' if chart_url.endswith('/') else '/'}{chart_name}"
+            )
+            command = ["helm", "pull", chart_oci_url, "--version", chart_version]
+        else:
+            command = [
+                "helm",
+                "pull",
+                "--repo",
+                chart_url,
+                "--version",
+                chart_version,
+                chart_name,
+            ]
+
+        res = _run(command, cwd=tmp_dir)
+        if res.returncode != 0:
+            errors.append(
+                {
+                    "source": f"helm pull for '{file_to_validate}'",
+                    "message": f"\n{res.stdout}",
+                }
+            )
+            return
+
+        charts = sorted(glob.glob("*.tgz", root_dir=tmp_dir))
+        res = _run(["helm", "lint", "-f", "values.yaml", *charts], cwd=tmp_dir)
+        if res.returncode != 0:
+            errors.append(
+                {
+                    "source": f"helm lint for '{file_to_validate}'",
+                    "message": f"\n{res.stdout}",
+                }
+            )
 
 
 def _spec(definition):

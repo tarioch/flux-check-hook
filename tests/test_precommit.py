@@ -149,7 +149,7 @@ def test_release_without_a_chart(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_chart_ref_is_skipped(capsys: pytest.CaptureFixture[str]) -> None:
-    with mock.patch.object(testm, "check_kustomiztion") as kustomize:
+    with mock.patch.object(testm, "check_kustomiztion", return_value={}) as kustomize:
         assert run_hook("chart_ref/release.yaml") == 0
 
     assert "skipping" in capsys.readouterr().out

@@ -66,10 +66,8 @@ def _validateFile(fileToValidate, repos, errors):
             ):
                 continue
 
-            try:
-                chartSpec = definition["spec"]["chart"]["spec"]
-
-            except KeyError:
+            chartSpec = _chartSpec(definition)
+            if not chartSpec and "chartRef" not in _spec(definition):
                 # Maybe it kustomize
                 path_to_file = f.name.split("/")
                 while path_to_file:
@@ -81,22 +79,37 @@ def _validateFile(fileToValidate, repos, errors):
                         definition = check
                         break
 
-                try:
-                    chartSpec = definition["spec"]["chart"]["spec"]
+                chartSpec = _chartSpec(definition)
 
-                except KeyError as e:
-                    if definition["spec"]["chartRef"]:
-                        print("Cannot validate OCI-based charts, skipping")
-                        continue
-                    else:
-                        raise e
+            if not chartSpec:
+                if "chartRef" in _spec(definition):
+                    print("Cannot validate OCI-based charts, skipping")
+                else:
+                    name = definition.get("metadata", {}).get("name")
+                    errors.append(
+                        {
+                            "source": fileToValidate,
+                            "message": f"HelmRelease '{name}' has neither spec.chart.spec nor spec.chartRef "
+                            "and no kustomization in the parent directories builds it",
+                        }
+                    )
+                continue
 
             if chartSpec["sourceRef"]["kind"] != "HelmRepository":
                 continue
 
             chartName = chartSpec["chart"]
             chartVersion = chartSpec["version"]
-            chartUrl = repos[chartSpec["sourceRef"]["name"]]
+            chartUrl = repos.get(chartSpec["sourceRef"]["name"])
+            if chartUrl is None:
+                errors.append(
+                    {
+                        "source": fileToValidate,
+                        "message": f"HelmRepository '{chartSpec['sourceRef']['name']}' is not defined "
+                        "in a yaml file below the current directory",
+                    }
+                )
+                continue
 
             with tempfile.TemporaryDirectory() as tmpDir:
                 with open(path.join(tmpDir, "values.yaml"), "w") as valuesFile:
@@ -138,6 +151,15 @@ def _validateFile(fileToValidate, repos, errors):
                             "message": f"\n{res.stdout}",
                         }
                     )
+
+
+def _spec(definition):
+    return definition.get("spec") or {}
+
+
+def _chartSpec(definition):
+    """The chart of a HelmRelease, None if it has no spec.chart.spec."""
+    return (_spec(definition).get("chart") or {}).get("spec")
 
 
 def _run(command, cwd=None):

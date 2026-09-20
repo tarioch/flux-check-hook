@@ -127,3 +127,19 @@ def test_missing_helm(
     out = capsys.readouterr().out
     assert "helm pull for" in out
     assert "not found" in out
+
+
+def test_errors_do_not_carry_over_to_the_next_run() -> None:
+    assert run_hook("invalid_values/release.yaml") == 1
+
+    assert run_hook("default/release.yaml") == 0
+
+
+@pytest.mark.parametrize(
+    ("file", "exit_code"),
+    [("default/release.yaml", 0), ("invalid_values/release.yaml", 1)],
+)
+def test_exit_code_of_the_command(file: str, exit_code: int) -> None:
+    result = subprocess.run(["check-flux-helm-values", file], capture_output=True)
+
+    assert result.returncode == exit_code

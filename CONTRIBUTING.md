@@ -65,7 +65,7 @@ Things that catch people out:
 ## Git and pull requests
 
 - Branch off `main`, named `feature/…`, `bugfix/…` or `chore/…` (snake_case after the prefix). The prefix labels the PR
-  (`.github/pr-labeler.yml`), and the label decides the category in the release notes (the shared
+  (`.github/pr-labeler.yml`, its `Label check` fails without one of these labels), and the label decides the category in the release notes (the shared
   `release-drafter.yml` of [tarioch/.github](https://github.com/tarioch/.github)).
 - Commit subjects are imperative and start with a capital letter ("Match the patched release by name"), the body
   explains why.
@@ -73,7 +73,7 @@ Things that catch people out:
 
 ## CI and releases
 
-`.github/workflows/ci.yml` runs `lint`, `test` (matrix) and `hook` for every pull request and for pushes to `main`.
+`.github/workflows/ci.yml` runs `lint`, `test` (matrix), `hook` and `ci-ok` (fails unless all of them succeeded, the one check to require) for every pull request and for pushes to `main`.
 Workflows use the least permissions they need, and every action is pinned to a commit SHA (Dependabot keeps the pins
 current, zizmor fails for unpinned actions or broad permissions).
 
